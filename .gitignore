@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Obsidian per-vault state (the demo vault ships without it)
+.obsidian/
+.trash/
+
+# Python
+__pycache__/
+*.pyc
