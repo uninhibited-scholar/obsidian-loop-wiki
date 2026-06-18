@@ -130,6 +130,10 @@ It checks the **machine-verifiable completion criteria**:
 
 - no orphan nodes (every concept/entity/comparison has ≥1 wikilink),
 - no broken wikilinks (every `[[target]]` resolves to a file),
+- no duplicate stems (no two files share a basename, which would make
+  `[[name]]` resolve ambiguously),
+- every synthesized node (`concepts/`, `comparisons/`) cites a `raw/` source,
+  so conclusions stay traceable to evidence,
 - `index.md` and `log.md` were updated this run,
 - to-verify items are explicitly marked, not silently dropped.
 

@@ -18,9 +18,12 @@ import sys
 
 # Node folders whose pages are expected to participate in the graph.
 NODE_DIRS = ["concepts", "entities", "comparisons", "queries", "moc"]
+# Synthesized-knowledge folders: their conclusions must be traceable to a source.
+CITE_DIRS = ["concepts", "comparisons"]
 CONTROL = ["SCHEMA.md", "index.md", "log.md"]
 WIKILINK = re.compile(r"\[\[([^\]|#]+)")  # captures target, ignores |alias and #heading
 TOVERIFY = re.compile(r"待验证|to-?verify", re.IGNORECASE)
+RAWPATH = re.compile(r"\braw/[\w./-]+")  # a literal citation like raw/articles/foo.md
 
 
 def md_files(root):
@@ -28,6 +31,19 @@ def md_files(root):
         for n in names:
             if n.endswith(".md"):
                 yield os.path.join(dirpath, n)
+
+
+def _cites_source(text, by_stem, raw_root):
+    """True if the text traces back to the evidence layer (raw/)."""
+    # A literal path citation, e.g. `raw/articles/foo.md`.
+    if RAWPATH.search(text):
+        return True
+    # A wikilink whose target resolves to a file under raw/.
+    for target in WIKILINK.findall(text):
+        p = by_stem.get(target.strip())
+        if p and os.path.abspath(p).startswith(raw_root + os.sep):
+            return True
+    return False
 
 
 def main():
@@ -43,10 +59,23 @@ def main():
     problems = []
     notes = []
 
-    # Map basename (without .md) -> path, for resolving wikilinks.
-    by_stem = {}
+    # Map basename (without .md) -> [paths]. A stem with >1 path is ambiguous:
+    # Obsidian resolves [[name]] by basename, so duplicate stems make wikilinks
+    # point at "whichever file Obsidian happens to pick" — a silent failure.
+    stem_paths = {}
     for f in md_files(vault):
-        by_stem.setdefault(os.path.splitext(os.path.basename(f))[0], f)
+        stem_paths.setdefault(os.path.splitext(os.path.basename(f))[0], []).append(f)
+    # First path per stem, for resolving links (matches Obsidian's basename lookup).
+    by_stem = {stem: paths[0] for stem, paths in stem_paths.items()}
+    raw_root = os.path.abspath(os.path.join(vault, "raw"))
+
+    # 0) Duplicate stems: two files share a basename, so [[name]] is ambiguous.
+    for stem, paths in sorted(stem_paths.items()):
+        if len(paths) > 1:
+            rels = ", ".join(os.path.relpath(p, vault) for p in sorted(paths))
+            problems.append(
+                f"DUPLICATE STEM: [[{stem}]] is ambiguous — {len(paths)} files share it: {rels}"
+            )
 
     # 1) Orphan nodes: a node page with zero outgoing wikilinks.
     newest_node_mtime = 0.0
@@ -60,6 +89,13 @@ def main():
             links = WIKILINK.findall(text)
             if not links:
                 problems.append(f"ORPHAN: {os.path.relpath(f, vault)} has no [[wikilinks]]")
+            # Synthesized knowledge must be traceable to a source: either a literal
+            # raw/ citation, or a wikilink that resolves to a file under raw/.
+            if d in CITE_DIRS and not _cites_source(text, by_stem, raw_root):
+                problems.append(
+                    f"UNSOURCED: {os.path.relpath(f, vault)} cites no raw/ source — "
+                    "bind its conclusions to evidence"
+                )
             toverify_count += len(TOVERIFY.findall(text))
             newest_node_mtime = max(newest_node_mtime, os.path.getmtime(f))
 
