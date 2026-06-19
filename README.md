@@ -14,11 +14,13 @@ read an instructions file and run a Python script.
 
 [Quickstart](#-quickstart) · [Why this exists](#-why-this-exists) · [How it works](#-how-it-works) · [中文说明](#-中文说明)
 
-</div>
+<br>
 
-> _Add a demo GIF here: an Obsidian graph view starting empty, then exploding
-> into a connected web as articles get ingested. This is the money shot — record
-> it once your demo vault is open in Obsidian._
+![A knowledge graph growing itself: typed nodes appear and link up wave by wave, ending on a verify PASS](assets/demo.gif)
+
+<sub>One source in → typed nodes (concepts · entities · comparison · MOC) compiled out, cross-linked by `[[wikilinks]]`, every conclusion bound to its evidence. Rendered from the bundled `demo-vault` with `scripts/render_demo_gif.py`.</sub>
+
+</div>
 
 ---
 
